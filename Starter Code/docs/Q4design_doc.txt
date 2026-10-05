@@ -1,14 +1,27 @@
 ######################################################################
 #
-# TODO: Write a short (1-3 paragraph) design document about your solution to Q4.
-#       Please include the following:
-#     
-#         1) An explanation of what you wrote and how the ScriptPubKey works
-#         2) Briefly, how the ScriptPubKey you wrote fits into the bigger 
-#            picture of this atomic swap.
-#         3) Consider the case of Alice sending coins to Bob with coinExchangeScript:
-#            Why can Alice always get her money back if Bob doesn't redeem it? 
-#            Why can't this be solved with a simple 1-of-2 multisig? 
+# CS251 Project 2 - Question 4 Design Document
+# Cross-Chain Atomic Swap Design
 #
+######################################################################
 
+1) Explanation of coinExchangeScript and how it works:
+The coinExchangeScript constructs a conditional smart contract using Bitcoin Script opcodes (OP_IF / OP_ELSE / OP_ENDIF) that supports two distinct redemption pathways:
+- Pathway 1: Successful Swap Redemption (OP_IF branch).
+  When the recipient redeems the coins using coinExchangeScriptSig1, they push [sig_recipient, secret, OP_TRUE] onto the stack. The OP_IF statement consumes OP_TRUE and enters the first branch. The script executes OP_HASH160 on secret, verifies that the resulting digest equals hash_of_secret using OP_EQUALVERIFY, and finally checks sig_recipient against public_key_recipient using OP_CHECKSIG. If both the hash pre-image and recipient signature are valid, the script leaves True on the stack.
+- Pathway 2: Timeout Refund (OP_ELSE branch).
+  When a refund transaction is executed using coinExchangeScriptSig2, the spender pushes [OP_0, sig_sender, sig_recipient, OP_FALSE] onto the stack. The OP_IF statement consumes OP_FALSE and jumps to the OP_ELSE branch. The script then executes a standard 2-of-2 multisig: [2, public_key_sender, public_key_recipient, 2, OP_CHECKMULTISIG]. This ensures that the refund output can only be spent if both the sender and recipient have co-signed the transaction.
 
+2) How coinExchangeScript fits into the bigger picture of the atomic swap:
+The cross-chain atomic swap coordinates two independent blockchains (Bitcoin Testnet3 and BlockCypher Testnet) without relying on a centralized intermediary. Both chains are bound cryptographically by a shared secret hash, H(x), where only Alice initially knows the pre-image x:
+1. Alice locks BTC on Bitcoin Testnet with coinExchangeScript(Alice, Bob, H(x)).
+2. Bob locks BCY on BlockCypher Testnet with coinExchangeScript(Bob, Alice, H(x)).
+3. To claim Bob's BCY, Alice must submit a transaction containing the pre-image x in its scriptSig. Once confirmed, x is permanently and publicly recorded on the BCY blockchain.
+4. Bob reads x from the BCY transaction and uses x to unlock Alice's BTC before Alice's timelock expires.
+Because the act of Alice claiming her coins automatically publishes x, neither party can cheat: either both parties receive their respective coins, or neither does.
+
+3) Refund safety and why 1-of-2 multisig is insufficient:
+- Why Alice can always get her money back if Bob doesn't redeem:
+  Before Alice broadcasts her swap transaction to the Bitcoin network, she prepares an off-chain refund transaction (alice_return_coins_tx) that spends the swap output back to Alice's own address. This refund transaction has an nLockTime set into the future (current_height + alice_locktime). Alice gets Bob's signature on this refund transaction BEFORE she ever broadcasts the swap transaction. If Bob fails or refuses to redeem within alice_locktime, the timelock expires and Alice broadcasts the pre-signed 2-of-2 refund transaction to retrieve her BTC. Because Bob already signed it beforehand, Alice does not need Bob's cooperation at the time of refund. Furthermore, bob_locktime < alice_locktime guarantees Bob enough time to claim his refund safely if Alice abandons the swap.
+- Why this cannot be solved with a simple 1-of-2 multisig:
+  In a 1-of-2 multisig, ANY single party can spend the UTXO unilaterally at any moment without any conditions. If Alice deposited funds into a 1-of-2 multisig, Bob could immediately steal all of Alice's BTC without ever locking his BCY or revealing any secret. Similarly, Alice could withdraw her BTC right after Bob locks his BCY, leaving Bob empty-handed. A 1-of-2 multisig lacks both cryptographic secret verification (hashlock) and timelock refund enforcement, making atomic exchange impossible and exposing both parties to counterparty theft.

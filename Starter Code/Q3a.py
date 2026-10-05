@@ -9,13 +9,13 @@ from Q1 import send_from_P2PKH_transaction
 
 
 cust1_private_key = CBitcoinSecret(
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+    'cPincwYEnMKyEPoLJnkYTxHAuDY55FDPg1u8SSc9GeXrPSv3AyS4')
 cust1_public_key = cust1_private_key.pub
 cust2_private_key = CBitcoinSecret(
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+    'cQM6uUnZrrppLoVfpF5wm9VLxUcqHru7NqTt4V9JdddgkBZx39yX')
 cust2_public_key = cust2_private_key.pub
 cust3_private_key = CBitcoinSecret(
-    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+    'cQ36KsTtzjtDYWpXQJrPfFiPuRofUNTxxEcNvmWVuDdcSYbAVPGH')
 cust3_public_key = cust3_private_key.pub
 
 
@@ -27,17 +27,18 @@ cust3_public_key = cust3_private_key.pub
 # bank_private_key.
 
 Q3a_txout_scriptPubKey = [
-        # fill this in!
+    my_public_key, OP_CHECKSIGVERIFY,
+    1, cust1_public_key, cust2_public_key, cust3_public_key, 3, OP_CHECKMULTISIG
 ]
 ######################################################################
 
 if __name__ == '__main__':
     ######################################################################
     # TODO: set these parameters correctly
-    amount_to_send = None # amount of BTC in the output you're sending minus fee
+    amount_to_send = 0.0001 # amount of BTC in the output you're sending minus fee
     txid_to_spend = (
-        'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
-    utxo_index = None # index of the output you are spending, indices start at 0
+        '8d48668219904acf656e4b7cbf72d6f6a24906dc0488ddf3a3f6b2dbda8b194b')
+    utxo_index = 2 # index of the output you are spending, indices start at 0
     ######################################################################
 
     response = send_from_P2PKH_transaction(amount_to_send, txid_to_spend, 
